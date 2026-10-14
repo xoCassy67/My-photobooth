@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Cute Photobooth 🎀</title>
+<style>
+:root{--pink:#ff7eb6;--dark:#3b2631;--card:#fff;--soft:#fff0f7}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#fff3fa,#f8eaff);color:var(--dark)}
+.app{max-width:1050px;margin:auto;padding:24px}.hero{text-align:center;margin-bottom:18px}.hero h1{font-size:clamp(30px,7vw,54px);margin:8px}.hero p{margin:0;color:#765868}
+.panel{background:rgba(255,255,255,.88);border:2px solid #ffd2e7;border-radius:24px;padding:18px;box-shadow:0 12px 35px #b95d8820}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+label{font-weight:700;font-size:14px}select,input,button{width:100%;margin-top:7px;border:1px solid #f1bfd5;border-radius:13px;padding:11px;font-size:15px;background:white;color:var(--dark)}
+button{background:var(--pink);color:white;border:0;font-weight:800;cursor:pointer}button.secondary{background:#fff;color:var(--pink);border:1px solid #ffabd0}
+.stage{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(220px,.7fr);gap:18px;align-items:start}
+.camera{position:relative;background:#191319;border-radius:20px;overflow:hidden;min-height:280px;display:flex;align-items:center;justify-content:center}
+video{width:100%;display:block;aspect-ratio:4/3;object-fit:cover;transform:scaleX(-1)}
+.count{position:absolute;font-size:90px;color:#fff;font-weight:900;text-shadow:0 4px 18px #000;display:none}
+.strip-wrap{text-align:center}.strip{margin:auto;width:min(100%,260px);padding:13px;background:#ffd7e8;border-radius:8px;box-shadow:0 8px 20px #0002}
+.strip-title{font-weight:900;margin:0 0 9px}.shots{display:grid;gap:8px}.shots img{width:100%;display:block;border-radius:4px;background:#eee;min-height:45px;object-fit:cover}
+#download{display:none;margin-top:10px}.small{font-size:12px;color:#876a79;margin-top:9px}
+@media(max-width:760px){.stage{grid-template-columns:1fr}.app{padding:14px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hero"><h1>🎀 My Cute Photobooth 🎀</h1><p>Kies je stijl, maak 4 foto's en krijg je eigen fotostrip!</p></div>
+  <div class="panel">
+    <div class="controls">
+      <div><label>Thema</label><select id="theme"><option value="cute">🎀 Cute</option><option value="kpop">💗 K-pop</option><option value="y2k">✨ Y2K</option><option value="bw">🖤 Black & White</option><option value="coquette">🌸 Coquette</option></select></div>
+      <div><label>Stripkleur</label><select id="color"><option value="#ffd7e8">🩷 Baby pink</option><option value="#e9d8ff">💜 Lila</option><option value="#d8edff">💙 Baby blue</option><option value="#fff6cf">💛 Soft yellow</option><option value="#ffffff">🤍 Wit</option><option value="#222222">🖤 Zwart</option></select></div>
+      <div><label>Lay-out</label><select id="layout"><option value="vertical">4 onder elkaar</option><option value="grid">2 × 2</option></select></div>
+      <div><label>Tekst op de strip</label><input id="caption" maxlength="24" value="MY PHOTOBOOTH ✨"></div>
+    </div>
+    <div class="stage">
+      <div>
+        <div class="camera"><video id="video" autoplay playsinline></video><div class="count" id="count">3</div></div>
+        <button id="start">📸 Start Photobooth</button>
+        <p class="small">Je browser vraagt toestemming voor je camera. Je foto's blijven in deze pagina totdat je ze downloadt.</p>
+      </div>
+      <div class="strip-wrap">
+        <div class="strip" id="strip"><p class="strip-title" id="stripTitle">MY PHOTOBOOTH ✨</p><div class="shots" id="shots"><div>Je 4 foto's komen hier 💕</div></div></div>
+        <button class="secondary" id="download">⬇️ Download fotostrip</button>
+      </div>
+    </div>
+  </div>
+</div>
+<canvas id="canvas" hidden></canvas>
+<script>
+const video=document.getElementById('video'), count=document.getElementById('count'), start=document.getElementById('start');
+const shots=document.getElementById('shots'), strip=document.getElementById('strip'), title=document.getElementById('stripTitle');
+let pics=[], stream=null, finalData=null;
+const themes={
+ cute:{filter:'none',emoji:'🎀'},
+ kpop:{filter:'saturate(1.18) contrast(1.05)',emoji:'💗'},
+ y2k:{filter:'saturate(1.35) brightness(1.04)',emoji:'✨'},
+ bw:{filter:'grayscale(1)',emoji:'🖤'},
+ coquette:{filter:'sepia(.12) saturate(1.18)',emoji:'🌸'}
+};
+async function camera(){
+ try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});video.srcObject=stream;}
+ catch(e){alert('Camera kon niet worden gestart. Controleer je cameratoestemming.');}
+}
+camera();
+function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+async function countdown(){
+ count.style.display='block';
+ for(let n=3;n>0;n--){count.textContent=n;await wait(800)}
+ count.textContent='📸';await wait(250);count.style.display='none';
+}
+function take(){
+ const c=document.getElementById('canvas'),ctx=c.getContext('2d'),w=720,h=540;c.width=w;c.height=h;
+ ctx.translate(w,0);ctx.scale(-1,1);ctx.filter=themes[theme.value].filter;ctx.drawImage(video,0,0,w,h);ctx.filter='none';ctx.setTransform(1,0,0,1,0,0);
+ return c.toDataURL('image/jpeg',.9);
+}
+function render(){
+ shots.innerHTML='';shots.style.gridTemplateColumns=layout.value==='grid'?'1fr 1fr':'1fr';
+ pics.forEach(p=>{const im=document.createElement('img');im.src=p;shots.appendChild(im)});
+ strip.style.background=color.value;title.textContent=(caption.value||'MY PHOTOBOOTH')+' '+themes[theme.value].emoji;
+ if(color.value==='#222222') {strip.style.color='white'} else {strip.style.color='#3b2631'}
+}
+async function makeStrip(){
+ const w=700, pad=28, gap=14, titleH=62, cols=layout.value==='grid'?2:1, imgW=(w-pad*2-gap*(cols-1))/cols, imgH=imgW*.75;
+ const rows=layout.value==='grid'?2:4, h=pad+titleH+imgH*rows+gap*(rows-1)+pad;
+ const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+ x.fillStyle=color.value;x.fillRect(0,0,w,h);x.fillStyle=color.value==='#222222'?'#fff':'#3b2631';x.font='bold 28px Arial';x.textAlign='center';x.fillText((caption.value||'MY PHOTOBOOTH')+' '+themes[theme.value].emoji,w/2,pad+35);
+ for(let i=0;i<4;i++){const im=new Image();im.src=pics[i];await new Promise(r=>im.onload=r);let col=layout.value==='grid'?i%2:0,row=layout.value==='grid'?Math.floor(i/2):i;let xx=pad+col*(imgW+gap),yy=pad+titleH+row*(imgH+gap);x.save();x.translate(xx+imgW,yy);x.scale(-1,1);x.drawImage(im,0,0,imgW,imgH);x.restore()}
+ finalData=c.toDataURL('image/png');download.style.display='block';
+}
+start.onclick=async()=>{
+ if(!stream) await camera();pics=[];start.disabled=true;start.textContent='📸 Foto 1 van 4...';
+ for(let i=0;i<4;i++){await countdown();pics.push(take());render();if(i<3)await wait(500)}
+ await makeStrip();start.disabled=false;start.textContent='📸 Opnieuw maken';
+};
+download.onclick=()=>{const a=document.createElement('a');a.href=finalData;a.download='mijn-photobooth-strip.png';a.click()};
+for(const el of [document.getElementById('theme'),document.getElementById('color'),document.getElementById('layout'),document.getElementById('caption')]) el.addEventListener('input',render);
+</script>
+</body></html>
